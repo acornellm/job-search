@@ -19,6 +19,12 @@
 // Nested labels use the full path, e.g. 'Jobs/JobAlerts'.
 const JOB_ALERT_LABEL = 'Jobs/JobAlerts';
 
+// Manual-entry column on Job Links. Paste a job posting URL here (any host —
+// the company's own careers page, a resolved LinkedIn posting, whatever) and
+// job-triage.gs uses it instead of the URL scraped from the email. See
+// ensureManualUrlColumn_() and readJobLinks_() in job-triage.gs.
+const MANUAL_URL_HEADER = 'Manual URL';
+
 // Hosts that almost always mean "this is a job posting."
 const JOB_HOSTS = [
   'greenhouse.io', 'boards.greenhouse.io', 'job-boards.greenhouse.io',
@@ -209,6 +215,25 @@ function demo() {
 }
 
 /**
+ * Add the "Manual URL" column if it isn't there yet. Sheets created before
+ * this feature existed only have the original six headers — this makes the
+ * upgrade idempotent instead of requiring a by-hand sheet edit.
+ */
+function ensureManualUrlColumn_(sheet) {
+  const width = sheet.getLastColumn();
+  const header = width > 0
+    ? sheet.getRange(1, 1, 1, width).getValues()[0].map(function (h) { return String(h).trim(); })
+    : [];
+  if (header.indexOf(MANUAL_URL_HEADER) > -1) return;
+
+  const col = width + 1;
+  sheet.getRange(1, col).setValue(MANUAL_URL_HEADER).setFontWeight('bold');
+  sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1)
+    .setNote('Paste a job posting URL here to override the URL scraped from ' +
+             'the email. Takes priority for triage, on any host.');
+}
+
+/**
  * Dump results into a sheet — handy alongside an application tracker.
  * Reuses the sheet if it's already there, and only appends URLs that
  * aren't logged yet, so this is safe to run on a recurring trigger.
@@ -227,6 +252,7 @@ function exportToSheet(sheetName, labelName, opts) {
     sheet.appendRow(HEADERS);   // sheet exists but was emptied out
     sheet.setFrozenRows(1);
   }
+  ensureManualUrlColumn_(sheet);
 
   // Column C holds the URL — build a set of what's already there.
   const existing = {};
