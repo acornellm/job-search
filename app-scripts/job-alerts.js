@@ -71,15 +71,12 @@ function findJobLinks(labelName, opts) {
   const seen = {};
   const rows = [];
 
-  Logger.log('Found %s messages', threads.length);
-
   threads.forEach(function (thread) {
     thread.getMessages().forEach(function (msg) {
       const raw = extractUrls_(msg.getBody()).concat(extractUrls_(msg.getPlainBody()));
-      
+
       raw.forEach(function (url) {
         let clean = normalizeUrl_(unwrapRedirect_(url));
-        
         if (!clean) return;
         if (isImageUrl_(clean)) return;
 
@@ -90,8 +87,6 @@ function findJobLinks(labelName, opts) {
         if (!opts.includeAll && !isJobLink_(clean, hosts)) return;
         if (seen[clean]) return;
         seen[clean] = true;
-
-        Logger.log(clean);
 
         rows.push({
           url: clean,
@@ -159,7 +154,7 @@ function isJobLink_(url, hosts) {
   if (!hostHit) {
     return JOB_PATH_HINTS.some(function (p) { return path.indexOf(p) === 0 || path.indexOf(p + '/') > -1 || path.indexOf(p) > -1; });
   }
-  // On LinkedIn/Indeed/Dice, only the posting URLs count — not feed or profile links.
+  // On LinkedIn/Indeed, only the posting URLs count — not feed or profile links.
   if (host.indexOf('linkedin.com') > -1) return /\/jobs\/view|\/jobs\/collections|currentJobId=/.test(url);
   if (host.indexOf('indeed.com') > -1) return /viewjob|\/jobs|jk=/.test(url);
   if (host.indexOf('dice.com') > -1) return /job-detail|\/jobs|jk=/.test(url);

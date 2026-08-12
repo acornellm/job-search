@@ -1,5 +1,5 @@
 /**
- * jobTailoring.gs — Google Apps Script (fourth file)
+ * job-tailoring.gs — Google Apps Script (fourth file)
  *
  * Takes the jobs you've marked Status = "Applying" on the Job Score sheet and
  * produces a per-job prep packet as a Google Doc:
@@ -16,9 +16,9 @@
  * it spends real tokens per job. Keep the limit small.
  *
  * Depends on:
- *   jobTriage.gs  — getApiKey_, getUiOrNull_, extractText_, parseClaudeJson_,
+ *   job-triage.gs  — getApiKey_, getUiOrNull_, extractText_, parseClaudeJson_,
  *                   fetchPageText_, hostFromUrl_, TRIAGE_MAX_PAGE_CHARS
- *   jobScoring.gs — loadProfileText_, headerMap_, getOrCreateScoreSheet_,
+ *   job-scoring.gs — loadProfileText_, headerMap_, getOrCreateScoreSheet_,
  *                   SCORE_SHEET_NAME
  *
  * Setup:
@@ -610,7 +610,7 @@ function prepOneUrl(url) {
 
 // --- Menu -----------------------------------------------------------------
 
-/** Called from onOpen() in jobTriage.gs. */
+/** Called from onOpen() in job-triage.gs. */
 function jobTailoringMenu_(ui) {
   ui.createMenu('Job Prep')
     .addItem('Prep applying jobs', 'menuPrepApplying')

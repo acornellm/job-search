@@ -1,5 +1,5 @@
 /**
- * jobTriage.gs — Google Apps Script (companion to findJobLinks.gs)
+ * job-triage.gs — Google Apps Script (companion to job-alerts.gs)
  *
  * Reads the "Job Links" sheet produced by exportToSheet(), sends each unseen
  * job URL to the Claude API for structured extraction, and writes the results
@@ -7,10 +7,10 @@
  *
  * Add this as a SECOND file in the same Apps Script project. Apps Script
  * shares one global scope across files, so every identifier here is prefixed
- * or suffixed to avoid colliding with findJobLinks.gs.
+ * or suffixed to avoid colliding with job-alerts.gs.
  *
  * Setup:
- *   1. Add this file to the project alongside findJobLinks.gs.
+ *   1. Add this file to the project alongside job-alerts.gs.
  *   2. Store your API key ONCE — either:
  *        a. Run setApiKey() and paste the key into the prompt, or
  *        b. Project Settings -> Script Properties -> add
@@ -300,7 +300,7 @@ function htmlToText_(html) {
     .trim();
 }
 
-/** Named and numeric entity decoding — separate from findJobLinks.gs's version. */
+/** Named and numeric entity decoding — separate from job-alerts.gs's version. */
 function decodeEntitiesFull_(s) {
   return String(s)
     .replace(/&nbsp;/gi, ' ')
@@ -653,7 +653,7 @@ function triageNextBatch() {
 
 /**
  * Pull new links from Gmail, then triage a batch. Chains the two files.
- * exportToSheet() comes from findJobLinks.gs.
+ * exportToSheet() comes from job-alerts.gs.
  */
 function refreshAndTriage() {
   const added = exportToSheet(TRIAGE_SOURCE_SHEET);

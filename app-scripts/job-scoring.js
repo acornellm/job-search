@@ -1,5 +1,5 @@
 /**
- * jobScoring.gs — Google Apps Script (third file, after findJobLinks.gs and jobTriage.gs)
+ * job-scoring.gs — Google Apps Script (third file, after findJobLinks.gs and jobTriage.gs)
  *
  * Scores triaged jobs against your resume, a weighted rubric, and calibration
  * examples, then writes each one as a row on a "Job Score" sheet — your
