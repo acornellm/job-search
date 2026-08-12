@@ -44,7 +44,7 @@ Gmail label ──> Job Links ──> Job Triage ──> Job Score ──> prep 
 There is no local test runner. The available checks:
 
 ```bash
-node --check <file>.gs.js     # syntax only; catches most edits
+node --check <file>.js        # syntax only; catches most edits
 clasp push                    # deploy, then run from the Apps Script editor
 ```
 
