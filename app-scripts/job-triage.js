@@ -60,6 +60,8 @@ const TRIAGE_MAX_RUNTIME_MS = 5 * 60 * 1000;  // bail out before Apps Script doe
 // Hosts to skip without spending an API call. LinkedIn postings sit behind an
 // auth wall, so neither the direct fetch nor the web fetch tool can read them —
 // they'd burn tokens and land as errors. Matches the host and its subdomains.
+// Paste a resolved URL into the "Manual URL" column on Job Links to bypass
+// this for a specific posting — see readJobLinks_().
 const TRIAGE_EXCLUDED_HOSTS = ['linkedin.com'];
 
 const TRIAGE_HEADERS = [
@@ -173,18 +175,20 @@ function readJobLinks_(sheetName) {
     throw new Error('Sheet "' + (sheetName || TRIAGE_SOURCE_SHEET) +
       '" not found. Run exportToSheet() first.');
   }
+  ensureManualUrlColumn_(sheet);
   if (sheet.getLastRow() < 2) return [];
 
   const values = sheet.getDataRange().getValues();
   const header = values[0].map(function (h) { return String(h).trim().toLowerCase(); });
 
   const idx = function (label) { return header.indexOf(label.toLowerCase()); };
-  const cUrl  = idx('URL');
-  const cDate = idx('Date');
-  const cHost = idx('Company/Host');
-  const cSubj = idx('Subject');
-  const cFrom = idx('From');
-  const cLink = idx('Email Link');
+  const cUrl    = idx('URL');
+  const cManual = idx(MANUAL_URL_HEADER);
+  const cDate   = idx('Date');
+  const cHost   = idx('Company/Host');
+  const cSubj   = idx('Subject');
+  const cFrom   = idx('From');
+  const cLink   = idx('Email Link');
 
   if (cUrl === -1) throw new Error('No "URL" column found in the source sheet.');
 
@@ -192,13 +196,22 @@ function readJobLinks_(sheetName) {
   const out = [];
 
   for (let r = 1; r < values.length; r++) {
-    const url = String(values[r][cUrl] || '').trim();
+    const rawUrl = String(values[r][cUrl] || '').trim();
+    const manualUrl = cManual > -1 ? String(values[r][cManual] || '').trim() : '';
+
+    // A pasted Manual URL takes priority over whatever the email scrape
+    // found — on any host, not just the ones on TRIAGE_EXCLUDED_HOSTS.
+    // isExcludedHost_() re-derives the host from this value, so a manual
+    // link gets past that check where the excluded original never could.
+    const url = manualUrl || rawUrl;
     if (!url || seen[url]) continue;
     seen[url] = true;
 
     out.push({
       url: url,
-      host: cHost > -1 ? String(values[r][cHost] || '') : hostFromUrl_(url),
+      manual: !!manualUrl,
+      host: manualUrl ? hostFromUrl_(manualUrl)
+          : cHost > -1 ? String(values[r][cHost] || '') : hostFromUrl_(url),
       date: cDate > -1 ? values[r][cDate] : '',
       subject: cSubj > -1 ? String(values[r][cSubj] || '') : '',
       from: cFrom > -1 ? String(values[r][cFrom] || '') : '',
@@ -603,6 +616,7 @@ function extractOneLink_(link, useClaudeFetch) {
 /** Assemble one row in TRIAGE_HEADERS order. */
 function buildTriageRow_(now, link, data, status, note) {
   data = data || {};
+  if (link.manual) note = note ? 'manual URL — ' + note : 'manual URL';
   return [
     now,                                   // Processed At
     scalar_(data.role_title),              // Role Title

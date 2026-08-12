@@ -69,7 +69,12 @@ Sheet and column names are the integration contract between files. Code reads
 columns **by header name** via `headerMap_()`, never by fixed index — preserve
 that when adding columns.
 
-- **Job Links** — `Date, Company/Host, URL, Subject, From, Email Link`
+- **Job Links** — `Date, Company/Host, URL, Subject, From, Email Link, Manual URL`.
+  `Manual URL` is user-entry only — paste a resolved posting URL there (any
+  host) and `readJobLinks_()` in job-triage.gs uses it instead of the URL
+  scraped from the email, bypassing `TRIAGE_EXCLUDED_HOSTS` for that row.
+  `ensureManualUrlColumn_()` in job-alerts.gs adds the column if it's missing,
+  so older sheets upgrade automatically.
 - **Job Triage** — `Processed At, Role Title, Company, Posting Date, Locations,
   Salary Range, Top Keywords, Technical Skills, URL, Email Date, Source,
   Email Link, Status, Notes`. Status is `OK` / `SKIPPED` / `ERROR`.
@@ -115,6 +120,10 @@ overwrite them. This is the most important invariant in the project.
 - `TRIAGE_EXCLUDED_HOSTS` (currently `linkedin.com`) short-circuits before any
   fetch or API call — LinkedIn sits behind auth and would burn tokens to fail.
   Excluded URLs are still written as `SKIPPED` so they aren't retried forever.
+  To remediate one, paste the resolved posting URL (e.g. the company's own
+  careers page) into that row's `Manual URL` cell on Job Links — it becomes
+  the row's identity for triage and scoring, and shows up as a new Job Triage
+  row noted `manual URL`. The original scraped row is left alone as-is.
 - Every stage dedupes by URL against its output sheet. Nothing is ever sent to
   the API twice without an explicit `rescore` / `redo` flag.
 - Batch limits are deliberately small: 5 for triage and scoring, 3 for
