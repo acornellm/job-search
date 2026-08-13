@@ -33,6 +33,7 @@
  *   prepApplyingJobs({ limit: 1 });
  *   prepApplyingJobs({ useWebSearch: true });  // let Claude look up the org
  *   prepOneUrl('https://...');                 // redo a single job
+ *   previewTailoringPrompt('https://...');     // see the exact prompts, no API call
  */
 
 // --- Configuration --------------------------------------------------------
@@ -608,6 +609,65 @@ function prepOneUrl(url) {
   Logger.log('URL not found on the Job Score sheet.');
 }
 
+// --- Inspection -------------------------------------------------------------
+
+/**
+ * Print the exact prompts prepApplyingJobs() would send for one job, without
+ * spending any API calls. The URL must already be on the Job Score sheet —
+ * whatever's in Role Title, Company, Score, Strengths, Gaps, etc. right now
+ * is what gets used, same as prepOneUrl() works from.
+ *
+ * The letter prompt can't be shown exactly: the real run builds it from the
+ * brief the brief call generates, so a placeholder stands in for that text.
+ */
+function previewTailoringPrompt(url) {
+  if (!url) { Logger.log('Pass a job URL, e.g. previewTailoringPrompt("https://...")'); return; }
+
+  const sheet = getOrCreateScoreSheet_();
+  const col = headerMap_(sheet);
+  const values = sheet.getDataRange().getValues();
+
+  const get = function (row, name) {
+    return col[name] ? String(row[col[name] - 1] || '').trim() : '';
+  };
+
+  let job = null;
+  for (let r = 1; r < values.length; r++) {
+    if (get(values[r], 'URL') !== url) continue;
+    job = {
+      url: url,
+      role: get(values[r], 'Role Title'),
+      company: get(values[r], 'Company'),
+      locations: get(values[r], 'Locations'),
+      salary: get(values[r], 'Salary Range'),
+      score: get(values[r], 'Score'),
+      verdict: get(values[r], 'Verdict'),
+      strengths: get(values[r], 'Strengths'),
+      gaps: get(values[r], 'Gaps'),
+      source: get(values[r], 'Source'),
+    };
+    break;
+  }
+  if (!job) { Logger.log('URL not found on the Job Score sheet.'); return; }
+
+  const jd = loadJobDescription_(job);
+  Logger.log('--- job description (%s, %s chars) ---\n%s',
+             jd.full ? 'fetched live' : 'triage summary fallback', jd.text.length, jd.text);
+
+  const resume = loadProfileText_();
+
+  Logger.log('--- brief: system prompt ---\n%s', BRIEF_SYSTEM);
+  Logger.log('--- brief: user prompt ---\n%s', buildBriefPrompt_(job, jd, resume));
+
+  Logger.log('--- letter: system prompt ---\n%s', LETTER_SYSTEM);
+  Logger.log('--- letter: user prompt (brief text below is a placeholder — the real ' +
+             'run uses whatever the brief call actually generates) ---\n%s',
+             buildLetterPrompt_(job, '(brief output goes here)', resume));
+
+  Logger.log('--- outreach: system prompt ---\n%s', OUTREACH_SYSTEM);
+  Logger.log('--- outreach: user prompt ---\n%s', buildOutreachPrompt_(job, false));
+}
+
 // --- Menu -----------------------------------------------------------------
 
 /** Called from onOpen() in job-triage.gs. */
@@ -619,6 +679,7 @@ function jobTailoringMenu_(ui) {
     .addSeparator()
     .addItem('Set prep Doc folder', 'setTailoringFolderId')
     .addItem('Open prep folder (see logs)', 'menuOpenPrepFolder')
+    .addItem('Preview tailoring prompt (see logs)', 'menuPreviewTailoringPrompt')
     .addToUi();
 }
 
@@ -649,6 +710,25 @@ function menuOpenPrepFolder() {
   } catch (e) {
     Logger.log('UI Not Available in this Context');
   }
+}
+
+/** Menu items can't take arguments, so this prompts for the URL instead. */
+function menuPreviewTailoringPrompt() {
+  const ui = getUiOrNull_();
+  if (!ui) {
+    Logger.log('Cannot prompt here. Call previewTailoringPrompt("https://...") directly.');
+    return;
+  }
+  const res = ui.prompt('Preview tailoring prompt',
+    'Paste the job URL — it must already be on the Job Score sheet.',
+    ui.ButtonSet.OK_CANCEL);
+  if (res.getSelectedButton() !== ui.Button.OK) return;
+
+  const url = res.getResponseText().trim();
+  if (!url) { ui.alert('Nothing entered.'); return; }
+
+  previewTailoringPrompt(url);
+  ui.alert('Logged. View -> Executions (or Logs) to read the prompts.');
 }
 
 function toastPrep_(summary) {
