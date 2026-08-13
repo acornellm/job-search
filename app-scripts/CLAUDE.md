@@ -69,12 +69,15 @@ Sheet and column names are the integration contract between files. Code reads
 columns **by header name** via `headerMap_()`, never by fixed index — preserve
 that when adding columns.
 
-- **Job Links** — `Date, Company/Host, URL, Subject, From, Email Link, Manual URL`.
+- **Job Links** — `Date, Company/Host, URL, Subject, From, Email Link, Manual URL, Skip`.
   `Manual URL` is user-entry only — paste a resolved posting URL there (any
   host) and `readJobLinks_()` in job-triage.gs uses it instead of the URL
   scraped from the email, bypassing `TRIAGE_EXCLUDED_HOSTS` for that row.
-  `ensureManualUrlColumn_()` in job-alerts.gs adds the column if it's missing,
-  so older sheets upgrade automatically.
+  `Skip` is user-entry only — type `SKIP` to drop a row from triage entirely
+  (no fetch, no API call, no Job Triage row); checked before `Manual URL`, so
+  `SKIP` wins if both are set. `ensureManualUrlColumn_()` and
+  `ensureSkipColumn_()` in job-alerts.gs add these columns if missing, so
+  older sheets upgrade automatically.
 - **Job Triage** — `Processed At, Role Title, Company, Posting Date, Locations,
   Salary Range, Top Keywords, Technical Skills, URL, Email Date, Source,
   Email Link, Status, Notes`. Status is `OK` / `SKIPPED` / `ERROR`.
@@ -124,6 +127,11 @@ overwrite them. This is the most important invariant in the project.
   careers page) into that row's `Manual URL` cell on Job Links — it becomes
   the row's identity for triage and scoring, and shows up as a new Job Triage
   row noted `manual URL`. The original scraped row is left alone as-is.
+- To keep an unwanted posting from being triaged at all — a bad host,
+  a role you already know isn't a fit — type `SKIP` in that row's `Skip`
+  cell on Job Links. `readJobLinks_()` drops the row before it's ever
+  considered pending, so it costs nothing on every future run, same as
+  excluded hosts but for any reason you choose.
 - Every stage dedupes by URL against its output sheet. Nothing is ever sent to
   the API twice without an explicit `rescore` / `redo` flag.
 - Batch limits are deliberately small: 5 for triage and scoring, 3 for

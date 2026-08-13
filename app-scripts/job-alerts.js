@@ -25,6 +25,12 @@ const JOB_ALERT_LABEL = 'Jobs/JobAlerts';
 // ensureManualUrlColumn_() and readJobLinks_() in job-triage.gs.
 const MANUAL_URL_HEADER = 'Manual URL';
 
+// Manual-entry column on Job Links. Type SKIP in this cell to keep a row out
+// of triage entirely — no fetch, no API call, no Job Triage row at all. See
+// ensureSkipColumn_() and readJobLinks_() in job-triage.gs.
+const SKIP_HEADER = 'Skip';
+const SKIP_VALUE = 'SKIP';
+
 // Hosts that almost always mean "this is a job posting."
 const JOB_HOSTS = [
   'greenhouse.io', 'boards.greenhouse.io', 'job-boards.greenhouse.io',
@@ -234,6 +240,24 @@ function ensureManualUrlColumn_(sheet) {
 }
 
 /**
+ * Add the "Skip" column if it isn't there yet. Same idempotent pattern as
+ * ensureManualUrlColumn_() — safe to call on every export/read.
+ */
+function ensureSkipColumn_(sheet) {
+  const width = sheet.getLastColumn();
+  const header = width > 0
+    ? sheet.getRange(1, 1, 1, width).getValues()[0].map(function (h) { return String(h).trim(); })
+    : [];
+  if (header.indexOf(SKIP_HEADER) > -1) return;
+
+  const col = width + 1;
+  sheet.getRange(1, col).setValue(SKIP_HEADER).setFontWeight('bold');
+  sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1)
+    .setNote('Type ' + SKIP_VALUE + ' to keep this link out of triage entirely ' +
+             '— no fetch, no API call, no Job Triage row.');
+}
+
+/**
  * Dump results into a sheet — handy alongside an application tracker.
  * Reuses the sheet if it's already there, and only appends URLs that
  * aren't logged yet, so this is safe to run on a recurring trigger.
@@ -253,6 +277,7 @@ function exportToSheet(sheetName, labelName, opts) {
     sheet.setFrozenRows(1);
   }
   ensureManualUrlColumn_(sheet);
+  ensureSkipColumn_(sheet);
 
   // Column C holds the URL — build a set of what's already there.
   const existing = {};

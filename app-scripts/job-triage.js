@@ -165,7 +165,8 @@ function getOrCreateSheet_(name, headers) {
 /**
  * Read the Job Links sheet into objects, keyed off the header row so column
  * order can shift without breaking this. Duplicate URLs collapse to the first.
- * @return {Array<Object>} { url, host, date, subject, from, permalink }
+ * Rows flagged SKIP are dropped entirely and never returned.
+ * @return {Array<Object>} { url, manual, host, date, subject, from, permalink }
  */
 function readJobLinks_(sheetName) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet()
@@ -176,6 +177,7 @@ function readJobLinks_(sheetName) {
       '" not found. Run exportToSheet() first.');
   }
   ensureManualUrlColumn_(sheet);
+  ensureSkipColumn_(sheet);
   if (sheet.getLastRow() < 2) return [];
 
   const values = sheet.getDataRange().getValues();
@@ -184,6 +186,7 @@ function readJobLinks_(sheetName) {
   const idx = function (label) { return header.indexOf(label.toLowerCase()); };
   const cUrl    = idx('URL');
   const cManual = idx(MANUAL_URL_HEADER);
+  const cSkip   = idx(SKIP_HEADER);
   const cDate   = idx('Date');
   const cHost   = idx('Company/Host');
   const cSubj   = idx('Subject');
@@ -194,8 +197,17 @@ function readJobLinks_(sheetName) {
 
   const seen = {};
   const out = [];
+  let skipped = 0;
 
   for (let r = 1; r < values.length; r++) {
+    // A row flagged SKIP never becomes a candidate — no fetch, no API call,
+    // no Job Triage row. Checked before the Manual URL override so SKIP
+    // always wins if someone sets both.
+    if (cSkip > -1 && String(values[r][cSkip] || '').trim().toUpperCase() === SKIP_VALUE) {
+      skipped++;
+      continue;
+    }
+
     const rawUrl = String(values[r][cUrl] || '').trim();
     const manualUrl = cManual > -1 ? String(values[r][cManual] || '').trim() : '';
 
@@ -218,6 +230,7 @@ function readJobLinks_(sheetName) {
       permalink: cLink > -1 ? String(values[r][cLink] || '') : '',
     });
   }
+  if (skipped) Logger.log('%s link(s) excluded by manual "%s" flag.', skipped, SKIP_HEADER);
   return out;
 }
 
