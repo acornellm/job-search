@@ -432,7 +432,7 @@ function parseClaudeJson_(text) {
 // --- Extraction prompt ----------------------------------------------------
 
 const TRIAGE_SYSTEM_PROMPT =
-  'You extract structured facts from job postings. You reply with a single ' +
+  'You extract structured facts from tech job postings. You reply with a single ' +
   'JSON object and nothing else — no markdown fences, no commentary, no ' +
   'preamble. You never invent details that are not in the posting.';
 
