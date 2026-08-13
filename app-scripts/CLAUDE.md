@@ -86,7 +86,9 @@ that when adding columns.
 - **Job Score** — the working tracker. `Status, Score, Verdict, Role Title,
   Company, Locations, Salary Range, Posting Date, Strengths, Gaps, Score Notes,
   My Notes, Applied Date, Source, URL, Email Link, Scored At`, plus
-  `Tailoring Doc, Prepped At` added by job-tailoring.gs.
+  `Tailoring Doc, Prepped At` added by job-tailoring.gs. Re-sorted highest
+  score first after every write — `scoreTriagedJobs()` and `scoreOneUrl()`
+  both call `sortScoreSheet()` once they're done writing.
 - **Scoring Rubric** — `Type, Criterion, Weight, Notes`. Type is Must-have /
   Nice-to-have / Dealbreaker / **Equivalence**.
 - **Calibration** — `Role Title, Company, Key Details, My Score, Reasoning`.

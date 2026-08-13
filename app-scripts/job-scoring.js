@@ -38,6 +38,11 @@
  *   scoreTriagedJobs({ limit: 1, dryRun: true });
  *   sortScoreSheet();                        // highest score to the top
  *
+ * scoreTriagedJobs() and scoreOneUrl() both call sortScoreSheet() after
+ * writing, so the sheet re-sorts itself automatically — no need to run it
+ * by hand unless you've reordered rows some other way (e.g. by hand-editing
+ * Score).
+ *
  * Status, My Notes, and Applied Date belong to you — rescoring never
  * overwrites them.
  */
@@ -477,6 +482,9 @@ function readTriagedJobs_() {
  *                                   Status, My Notes, Applied Date are kept.
  * @param {boolean} [opts.dryRun]    Log results without writing.
  * @return {Object} { scored, added, updated, errors, remaining }
+ *
+ * Sorts Job Score by Score, highest first, after any write — see
+ * sortScoreSheet(). Skipped on a dry run, since nothing was written.
  */
 function scoreTriagedJobs(opts) {
   opts = opts || {};
@@ -545,6 +553,11 @@ function scoreTriagedJobs(opts) {
     sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, SCORE_SHEET_HEADERS.length)
       .setValues(newRows);
   }
+
+  // Bring the highest score back to the top after any write. New rows land
+  // at the bottom and updated scores can move either way, so this runs
+  // whenever something actually changed.
+  if (!opts.dryRun && (newRows.length || updated)) sortScoreSheet();
 
   const summary = {
     scored: scored,
@@ -780,6 +793,7 @@ function scoreOneUrl(url) {
   else sheet.getRange(sheet.getLastRow() + 1, 1, 1, SCORE_SHEET_HEADERS.length)
         .setValues([buildScoreRow_(job, result)]);
 
+  sortScoreSheet();
   return result;
 }
 
