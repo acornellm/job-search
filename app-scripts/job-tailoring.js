@@ -206,6 +206,17 @@ const BRIEF_SYSTEM = [
   '    paired with the adjacent experience that offsets it.',
   '  - Ignore: a nice-to-have not worth spending space on.',
   '',
+  'Prose rules for every rewritten bullet — this needs to read like a person ',
+  'wrote it, not a model:',
+  '- No adverbs, no filler openers, no throat-clearing.',
+  '- Active voice only. The candidate does things; nothing inanimate ',
+  '  "becomes" or "emerges" on its own.',
+  '- Name the specific thing. Not "improved performance" — the number, the ',
+  '  system, the scale.',
+  '- Vary bullet length. Two strong bullets beat three padded ones. Not every ',
+  '  bullet needs to open the same way.',
+  '- No em dashes, no "not X, it\'s Y" contrasts, no line written to be quoted.',
+  '',
   'Write in Markdown with ## section headings and - bullets. No preamble.',
 ].join('\n');
 
