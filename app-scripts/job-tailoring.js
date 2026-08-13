@@ -260,6 +260,16 @@ const LETTER_SYSTEM = [
   'flags a gap as one to address, address it in one clause and move on — do ',
   'not apologize for it or dwell.',
   '',
+  'Prose rules — this needs to read like a person wrote it, not a model:',
+  '- No adverbs, no filler openers ("I\'m excited to..."), no throat-clearing.',
+  '- Active voice only. A person does things; nothing inanimate "becomes" or ',
+  '  "emerges" on its own.',
+  '- Name the specific thing. Not "the fit is strong" — say what makes it ',
+  '  strong, concretely.',
+  '- Vary sentence length line to line. Two examples beat three. Nothing ',
+  '  should read like a metronome.',
+  '- No em dashes, no "not X, it\'s Y" contrasts, no line written to be quoted.',
+  '',
   'Return only the letter body. No header block, no date, no signature line.',
 ].join('\n');
 
