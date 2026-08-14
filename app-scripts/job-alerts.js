@@ -34,7 +34,7 @@ const SKIP_VALUE = 'SKIP';
 // Hosts that almost always mean "this is a job posting."
 const JOB_HOSTS = [
   'greenhouse.io', 'boards.greenhouse.io', 'job-boards.greenhouse.io',
-  'lever.co', 'jobs.lever.co',
+  'lever.co', 'jobs.lever.co', 'google.com', 'facebook.com',
   'ashbyhq.com', 'jobs.ashbyhq.com',
   'myworkdayjobs.com', 'workday.com', 'wd1.myworkdaysite.com',
   'smartrecruiters.com', 'icims.com', 'taleo.net', 'jobvite.com',
@@ -172,6 +172,8 @@ function isJobLink_(url, hosts) {
   if (host.indexOf('dice.com') > -1) return /job-detail|\/jobs|jk=/.test(url);
   if (host.indexOf('hiringcafe.com') > -1) return /job\//.test(url);
   if (host.indexOf('builtin.com') > -1) return /job\/|jk=/.test(url);
+  if (host.indexOf('google.com') > -1) return /ignore\/|jk=/.test(url);
+  if (host.indexOf('facebook.com') > -1) return /ignore\/|jk=/.test(url);
   return true;
 }
 
