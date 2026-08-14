@@ -419,7 +419,31 @@ function callClaudeTailor_(system, userPrompt, opts) {
     const code = res.getResponseCode();
     const body = res.getContentText();
 
-    if (code === 200) return extractText_(JSON.parse(body));
+    if (code === 200) {
+      let data;
+      try {
+        data = JSON.parse(body);
+      } catch (e) {
+        // A 200 with a body that doesn't parse means something got mangled
+        // in transit — surface it instead of failing as a silent blank brief.
+        throw new Error('Claude returned HTTP 200 but the body was not valid ' +
+          'JSON (' + e.message + '). First 500 chars: ' + body.slice(0, 500));
+      }
+
+      Logger.log('  stop_reason=%s, content blocks=[%s], usage=%s',
+        data.stop_reason,
+        (data.content || []).map(function (b) { return b.type; }).join(', '),
+        JSON.stringify(data.usage || {}));
+
+      const text = extractText_(data);
+      if (!text) {
+        // extractText_() found no "text" blocks — dump what actually came
+        // back so a blank result is diagnosable instead of just empty.
+        Logger.log('  extractText_ returned nothing. Full content: %s',
+          JSON.stringify(data.content || []).slice(0, 2000));
+      }
+      return text;
+    }
 
     lastErr = 'HTTP ' + code + ': ' + body.slice(0, 400);
     if (code !== 429 && code < 500) break;
