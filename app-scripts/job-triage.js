@@ -17,11 +17,11 @@
  *           ANTHROPIC_API_KEY = sk-ant-...
  *      The key is never written into this file or into the spreadsheet.
  *   3. Run checkApiKey() to confirm it's readable.
- *   4. Run triageJobLinks() — processes 5 links by default.
+ *   4. Run triageJobLinks() — processes 20 links by default.
  *
  * Usage:
- *   triageJobLinks();                         // 5 newest unprocessed links
- *   triageJobLinks({ limit: 20 });            // bigger batch
+ *   triageJobLinks();                         // 20 newest unprocessed links
+ *   triageJobLinks({ limit: 50 });            // bigger batch
  *   triageJobLinks({ retryErrors: true });    // redo rows that failed before
  *   triageJobLinks({ limit: 1, dryRun: true });  // log only, no writes
  *
@@ -498,7 +498,7 @@ function buildExtractionPrompt_(link, pageText) {
  * Process unprocessed job links into the Job Triage sheet.
  *
  * @param {Object} [opts]
- * @param {number}  [opts.limit=5]         Max links to send to the API this run.
+ * @param {number}  [opts.limit=20]        Max links to send to the API this run.
  * @param {string}  [opts.sourceSheet]     Defaults to TRIAGE_SOURCE_SHEET.
  * @param {string}  [opts.triageSheet]     Defaults to TRIAGE_SHEET_NAME.
  * @param {boolean} [opts.retryErrors]     Re-run rows whose Status is ERROR,
