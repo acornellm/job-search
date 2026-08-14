@@ -17,7 +17,7 @@
  *
  * Depends on:
  *   job-triage.gs  — getApiKey_, getUiOrNull_, extractText_, parseClaudeJson_,
- *                   fetchPageText_, hostFromUrl_, TRIAGE_MAX_PAGE_CHARS
+ *                   fetchPageText_, hostFromUrl_
  *   job-scoring.gs — loadProfileText_, headerMap_, getOrCreateScoreSheet_,
  *                   SCORE_SHEET_NAME
  *
@@ -157,8 +157,13 @@ function readApplyingJobs_(sheet, col, opts) {
 // --- Job description ------------------------------------------------------
 
 /**
- * Get the full posting text. Falls back to the fields already extracted during
- * triage when the page can't be read — a thinner brief beats no brief.
+ * Get the full posting text, uncapped. Unlike triage — which truncates to
+ * TRIAGE_MAX_PAGE_CHARS because it runs on every link at volume — this step
+ * runs on a handful of jobs a week and produces the actual resume rewrites
+ * and cover letter, so trading completeness for token budget here would
+ * weaken the one output that matters most. Falls back to the fields already
+ * extracted during triage only when the page genuinely can't be read (empty
+ * fetch or a stub under 600 chars) — a thinner brief beats no brief.
  */
 function loadJobDescription_(job) {
   let text = '';
@@ -168,9 +173,6 @@ function loadJobDescription_(job) {
     Logger.log('  page fetch failed: %s', e.message);
   }
 
-  if (text && text.length > TRIAGE_MAX_PAGE_CHARS) {
-    text = text.slice(0, TRIAGE_MAX_PAGE_CHARS);
-  }
   if (text && text.length > 600) return { text: text, full: true };
 
   return {
