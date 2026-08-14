@@ -36,7 +36,7 @@ const TRIAGE_SHEET_NAME   = 'Job Triage';  // created on first run
 // How many links to send to the API per execution. Apps Script kills a run at
 // ~6 minutes on consumer accounts, and each link costs one API call plus a
 // page fetch, so keep this modest and run it on a trigger instead.
-const TRIAGE_DEFAULT_LIMIT = 5;
+const TRIAGE_DEFAULT_LIMIT = 20;
 
 // Claude API. Model IDs are pinned snapshots — see
 // https://docs.claude.com/en/docs/about-claude/models/overview
@@ -707,6 +707,7 @@ function onOpen() {
   // guards let any file be absent without breaking the rest.
   if (typeof jobScoreMenu_ === 'function') jobScoreMenu_(ui);
   if (typeof jobTailoringMenu_ === 'function') jobTailoringMenu_(ui);
+  if (typeof jobTrackerMenu_ === 'function') jobTrackerMenu_(ui);
   if (typeof jobTriggersMenu_ === 'function') jobTriggersMenu_(ui);
   if (typeof jobAnalyticsMenu_ === 'function') jobAnalyticsMenu_(ui);
 }

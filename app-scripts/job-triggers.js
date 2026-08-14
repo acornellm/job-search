@@ -13,11 +13,11 @@
 
 // Job Alerts: Gmail scan only, no API cost, so it can run often.
 const ALERTS_TRIGGER_HANDLER = 'exportToSheet';
-const ALERTS_TRIGGER_HOURS = 2;   // every 2h -> 12x/day
+const ALERTS_TRIGGER_HOURS = 6;   // every 6h -> 4x/day
 
 // Job Triage: calls the Claude API per link, so it stays to one run a day.
 const TRIAGE_TRIGGER_HANDLER = 'triageNextBatch';
-const TRIAGE_TRIGGER_HOUR = 7;    // local time, per appsscript.json timeZone
+const TRIAGE_TRIGGER_HOUR = 9;    // local time, per appsscript.json timeZone
 
 // Handler functions this file is allowed to install/remove triggers for.
 // Keeping this list explicit means installTriggers() never touches a
