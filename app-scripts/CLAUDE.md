@@ -48,9 +48,11 @@ Gmail label ──> Job Links ──> Job Triage ──> Job Score ──> prep 
   load-time error or a silent override. Before adding a top-level name, grep
   all files. Existing helpers are deliberately prefixed to avoid this
   (`decodeEntities_` in job-alerts.gs vs `decodeEntitiesFull_` in job-triage.gs).
-- **Exactly one `onOpen`.** It lives in job-triage.gs and calls
-  `jobScoreMenu_(ui)` and `jobTailoringMenu_(ui)`, each behind a
-  `typeof x === 'function'` guard. Never add a second `onOpen`.
+- **Exactly one `onOpen`.** It lives in job-triage.gs and calls each other
+  file's menu builder (`jobScoreMenu_`, `jobTailoringMenu_`,
+  `jobTrackerMenu_`, `jobTriggersMenu_`, `jobAnalyticsMenu_`) behind a
+  `typeof x === 'function'` guard. Never add a second `onOpen` — add a new
+  builder and wire it in here instead.
 - **`SpreadsheetApp.getUi()` throws** when there's no attached UI (triggers,
   some editor contexts). Always go through `getUiOrNull_()`, which logs
   "UI Not Available in this Context" and returns null.
@@ -173,7 +175,7 @@ updates an existing row.
   excluded hosts but for any reason you choose.
 - Every stage dedupes by URL against its output sheet. Nothing is ever sent to
   the API twice without an explicit `rescore` / `redo` flag.
-- Batch limits are deliberately small: 5 for triage and scoring, 3 for
+- Batch limits are deliberately small: 20 for triage and scoring, 3 for
   tailoring. Raise them only with the runtime ceiling in mind.
 
 ## Style
