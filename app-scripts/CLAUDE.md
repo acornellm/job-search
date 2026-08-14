@@ -19,6 +19,11 @@ Gmail label ──> Job Links ──> Job Triage ──> Job Score ──> prep 
    calibration examples, writes rows to the **Job Score** sheet.
 4. **job-tailoring.gs** — for rows the user marks `Applying`, generates a
    tailoring brief, cover letter, and outreach plan into a Google Doc.
+5. **job-triggers.gs** — installs the time-based triggers that run stages 1
+   and 2 automatically. Run `installTriggers()` once from the editor (or the
+   sheet's Job Triggers menu) to create them; re-run it after changing the
+   schedule constants at the top of the file. Stages 3 and 4 cost Claude API
+   calls, so they're never scheduled — only run from the custom menu.
 
 ## Hard constraints — read before editing
 
