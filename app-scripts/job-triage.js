@@ -707,5 +707,6 @@ function onOpen() {
   // guards let any file be absent without breaking the rest.
   if (typeof jobScoreMenu_ === 'function') jobScoreMenu_(ui);
   if (typeof jobTailoringMenu_ === 'function') jobTailoringMenu_(ui);
+  if (typeof jobTrackerMenu_ === 'function') jobTrackerMenu_(ui);
   if (typeof jobTriggersMenu_ === 'function') jobTriggersMenu_(ui);
 }
