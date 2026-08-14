@@ -708,4 +708,5 @@ function onOpen() {
   if (typeof jobScoreMenu_ === 'function') jobScoreMenu_(ui);
   if (typeof jobTailoringMenu_ === 'function') jobTailoringMenu_(ui);
   if (typeof jobTriggersMenu_ === 'function') jobTriggersMenu_(ui);
+  if (typeof jobAnalyticsMenu_ === 'function') jobAnalyticsMenu_(ui);
 }
