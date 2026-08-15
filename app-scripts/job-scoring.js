@@ -32,7 +32,7 @@
  *   5. Run scoreTriagedJobs().
  *
  * Usage:
- *   scoreTriagedJobs();                      // 5 new jobs -> Job Score rows
+ *   scoreTriagedJobs();                      // 20 new jobs -> Job Score rows
  *   scoreTriagedJobs({ limit: 25 });
  *   scoreTriagedJobs({ rescore: true });     // re-run scoring, keeps your Status
  *   scoreTriagedJobs({ limit: 1, dryRun: true });
@@ -477,7 +477,7 @@ function readTriagedJobs_() {
  * Score jobs from Job Triage into the Job Score sheet.
  *
  * @param {Object} [opts]
- * @param {number}  [opts.limit=5]   Max jobs to score this run.
+ * @param {number}  [opts.limit=20]  Max jobs to score this run.
  * @param {boolean} [opts.rescore]   Re-score rows already on Job Score.
  *                                   Status, My Notes, Applied Date are kept.
  * @param {boolean} [opts.dryRun]    Log results without writing.
