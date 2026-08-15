@@ -4,9 +4,12 @@
  * is the source of truth for what *should* be installed: edit the schedule
  * below, then run installTriggers() to make actual triggers match it.
  *
- * Scoring and Prep (job-scoring.gs, job-tailoring.gs) hit the Claude API and
- * are deliberately left unscheduled — run them from the sheet's custom menu
- * (jobScoreMenu_ / jobTailoringMenu_), never on a trigger.
+ * Scoring and Prep (job-scoring.gs, job-tailoring.gs) hit the Claude API;
+ * Job Tracker (job-tracker.gs) syncs applied rows by hand; Analytics
+ * (job-analytics.gs) recomputes on demand. All four are deliberately left
+ * unscheduled — run them from the sheet's custom menus (jobScoreMenu_ /
+ * jobTailoringMenu_ / jobTrackerMenu_ / jobAnalyticsMenu_), never on a
+ * trigger.
  */
 
 // --- Schedule ---------------------------------------------------------
