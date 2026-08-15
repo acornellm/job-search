@@ -54,11 +54,10 @@ const RUBRIC_SHEET_NAME       = 'Scoring Rubric';
 const CALIBRATION_SHEET_NAME  = 'Calibration';
 const RESUME_DOC_ID_PROPERTY  = 'RESUME_DOC_ID';
 
-// Status column is a dropdown you drive by hand.
-const STATUS_OPTIONS = [
-  'New', 'Interested', 'Applying', 'Applied', 'Interviewing',
-  'Offer', 'Rejected', 'Skip',
-];
+// Status column is a dropdown you drive by hand. Stops at Applied — what
+// happens after submission (recruiter screen, interviews, offer/rejection)
+// is Job Tracker's post-submission pipeline, not this one.
+const STATUS_OPTIONS = ['New', 'Interested', 'Applying', 'Applied', 'Skip'];
 const STATUS_DEFAULT = 'New';
 
 // Sheet layout. Status and Score lead so the sheet is scannable at a glance.

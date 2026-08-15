@@ -10,10 +10,11 @@ in Google Apps Script, bound to one Google Sheet.
 Gmail label ──> Job Links ──> Job Triage ──> Job Score ──> prep Docs in Drive
  job-alerts       job-triage    job-scoring    job-tailoring
                                       │
-                                      ├─ Status = Applied ──> Job Tracker
-                                      │                         job-tracker
-                                      v
-                                  Analytics (job-analytics)
+                                      └─ Status = Applied ──> Job Tracker
+                                                                 job-tracker
+
+Analytics (job-analytics) reads Job Links, Job Triage, Job Score, and
+Job Tracker; it doesn't feed back into the pipeline.
 ```
 
 1. **job-alerts.gs** — scans a Gmail label, extracts job-posting URLs from
@@ -34,12 +35,14 @@ Gmail label ──> Job Links ──> Job Triage ──> Job Score ──> prep 
    schedule constants at the top of the file. Stages 3, 4, and 5 cost Claude
    API calls or are meant to run on demand, so they're never scheduled —
    only run from the custom menu.
-7. **job-analytics.gs** — read-only. Summarizes Job Links, Job Triage, and
-   Job Score into an **Analytics** sheet: pipeline funnel, application/
-   interview/offer rates, score distributions, top companies/sources, weekly
-   activity, and timing. No Claude API calls. Run `refreshAnalytics()` from
-   the editor or the sheet's Analytics menu whenever you want it current —
-   it isn't kept live by formulas or a trigger.
+7. **job-analytics.gs** — read-only. Summarizes Job Links, Job Triage, Job
+   Score, and Job Tracker into an **Analytics** sheet: the pre-application
+   funnel and score distributions from Job Score, and the post-application
+   funnel — recruiter contact, interview, offer, and rejection rates — from
+   Job Tracker, plus top companies/sources and timing for each. No Claude
+   API calls. Run `refreshAnalytics()` from the editor or the sheet's
+   Analytics menu whenever you want it current — it isn't kept live by
+   formulas or a trigger.
 
 ## Hard constraints — read before editing
 
@@ -109,9 +112,12 @@ that when adding columns.
 - **Job Score** — the working tracker. `Status, Score, Verdict, Role Title,
   Company, Locations, Salary Range, Posting Date, Strengths, Gaps, Score Notes,
   My Notes, Applied Date, Source, URL, Email Link, Scored At`, plus
-  `Tailoring Doc, Prepped At` added by job-tailoring.gs. Re-sorted highest
-  score first after every write — `scoreTriagedJobs()` and `scoreOneUrl()`
-  both call `sortScoreSheet()` once they're done writing.
+  `Tailoring Doc, Prepped At` added by job-tailoring.gs. Status
+  (`STATUS_OPTIONS`) is `New / Interested / Applying / Applied / Skip` — it
+  stops at `Applied`; everything past submission lives on Job Tracker's own
+  pipeline instead. Re-sorted highest score first after every write —
+  `scoreTriagedJobs()` and `scoreOneUrl()` both call `sortScoreSheet()` once
+  they're done writing.
 - **Scoring Rubric** — `Type, Criterion, Weight, Notes`. Type is Must-have /
   Nice-to-have / Dealbreaker / **Equivalence**.
 - **Calibration** — `Role Title, Company, Key Details, My Score, Reasoning`.

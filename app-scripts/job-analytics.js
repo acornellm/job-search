@@ -1,26 +1,33 @@
 /**
  * job-analytics.gs — Google Apps Script (reads Job Links, Job Triage, Job
- * Score; writes summary stats to an "Analytics" sheet)
+ * Score, and Job Tracker; writes summary stats to an "Analytics" sheet)
  *
- * Pure read + summarize. Never writes back to Job Links, Job Triage, or Job
- * Score — safe to run any time, as often as you like, no Claude API calls.
+ * Pure read + summarize. Never writes back to any source sheet — safe to run
+ * any time, as often as you like, no Claude API calls.
  *
  * Usage:
  *   refreshAnalytics();   // recompute and rewrite the Analytics sheet
+ *
+ * Job Score's STATUS_OPTIONS stops at "Applied" — everything past that
+ * (recruiter screens, interviews, offer/rejection) lives on Job Tracker's
+ * own Status pipeline instead, so this file reports the pre-application
+ * funnel from Job Score and the post-application funnel from Job Tracker
+ * separately rather than conflating the two.
  *
  * Depends on job-triage.gs for: formatDate_, TRIAGE_SHEET_NAME,
  * TRIAGE_SOURCE_SHEET.
  * Depends on job-scoring.gs for: headerMap_, SCORE_SHEET_NAME, STATUS_OPTIONS,
  * STATUS_DEFAULT.
+ * Depends on job-tracker.gs for: JOB_TRACKER_SHEET_NAME,
+ * JOB_TRACKER_STATUS_OPTIONS, JOB_TRACKER_STATUS_DEFAULT.
  * Depends on job-alerts.gs for: SKIP_HEADER, SKIP_VALUE.
  */
 
 const ANALYTICS_SHEET_NAME = 'Analytics';
 
-// Job Score statuses counted as "applied" when Applied Date is blank but the
-// status has clearly moved past Applying (covers rows from before Applied
-// Date was being kept up to date by hand).
-const ANALYTICS_APPLIED_STATUSES = ['Applied', 'Interviewing', 'Offer', 'Rejected'];
+// Job Tracker statuses that represent a still-open application — used to
+// scope "days since applied" and "overdue follow-up" to rows still in play.
+const ANALYTICS_TRACKER_ACTIVE_STATUSES = ['Applied', 'Recruiter', 'Interviewing', 'Offer'];
 
 // --- Reading ----------------------------------------------------------
 
@@ -101,6 +108,7 @@ function gatherAnalyticsData_() {
   const links = readSheetRows_(TRIAGE_SOURCE_SHEET);
   const triage = readSheetRows_(TRIAGE_SHEET_NAME);
   const score = readSheetRows_(SCORE_SHEET_NAME);
+  const tracker = readSheetRows_(JOB_TRACKER_SHEET_NAME);
 
   // Job Links: count everything not flagged SKIP.
   let linksCaptured = 0;
@@ -130,10 +138,24 @@ function gatherAnalyticsData_() {
     };
   });
 
+  // Job Tracker: per-row fields for the post-application sections below.
+  const trackerRows = tracker.rows.map(function (row) {
+    return {
+      status: textCell_(row, tracker.col, 'Status') || JOB_TRACKER_STATUS_DEFAULT,
+      scoreNum: numCell_(row, tracker.col, 'Score'),
+      company: textCell_(row, tracker.col, 'Company'),
+      source: textCell_(row, tracker.col, 'Source'),
+      appliedDate: dateCell_(row, tracker.col, 'Applied Date'),
+      nextFollowUp: dateCell_(row, tracker.col, 'Next Follow-up'),
+      lastActivity: dateCell_(row, tracker.col, 'Last Activity'),
+    };
+  });
+
   return {
     linksCaptured: linksCaptured,
     triageStatusCounts: triageStatusCounts,
     jobs: jobs,
+    trackerRows: trackerRows,
   };
 }
 
@@ -152,7 +174,7 @@ function buildPipelineFunnelSection_(data) {
   });
 
   const rows = [
-    ['PIPELINE FUNNEL', '', ''],
+    ['JOB SCORE — PIPELINE FUNNEL', '', ''],
     ['Stage', 'Count', '% of links captured'],
     ['Links captured (Gmail, not skipped)', data.linksCaptured, ''],
     ['Triaged — OK', triagedOk, pct_(triagedOk, data.linksCaptured)],
@@ -172,28 +194,18 @@ function buildPipelineFunnelSection_(data) {
 function buildConversionSection_(data) {
   const scored = data.jobs.length;
   const applied = data.jobs.filter(function (j) {
-    return j.appliedDate || ANALYTICS_APPLIED_STATUSES.indexOf(j.status) !== -1;
+    return j.appliedDate || j.status === 'Applied';
   }).length;
-  const interviewedPlus = data.jobs.filter(function (j) {
-    return j.status === 'Interviewing' || j.status === 'Offer';
-  }).length;
-  const offers = data.jobs.filter(function (j) { return j.status === 'Offer'; }).length;
-  const rejected = data.jobs.filter(function (j) { return j.status === 'Rejected'; }).length;
   const triagedOk = data.triageStatusCounts.OK || 0;
 
   return [
-    ['CONVERSION RATES', ''],
+    ['JOB SCORE — CONVERSION RATES', ''],
     ['Metric', 'Value'],
     ['Triage yield (OK / links captured)', pct_(triagedOk, data.linksCaptured)],
     ['Application rate (applied / scored)', pct_(applied, scored)],
-    ['Interview rate — got a response (interviewing or offer / applied)', pct_(interviewedPlus, applied)],
-    ['Offer rate (offer / applied)', pct_(offers, applied)],
-    ['Offer rate among interviewed (offer / interviewing+offer)', pct_(offers, interviewedPlus)],
-    ['Rejection rate (rejected / applied)', pct_(rejected, applied)],
     ['', ''],
-    ['Note: no dedicated "recruiter contact" field exists, so "Interviewing" ' +
-     'status is used as the proxy for getting a response. Rates use current ' +
-     'Status, a snapshot rather than full history.', ''],
+    ['What happens after you apply — recruiter contact, interviews, offers — ' +
+     'is tracked on the Job Tracker sheet; see the sections below.', ''],
   ];
 }
 
@@ -215,16 +227,12 @@ function buildScoreSection_(data) {
   data.jobs.forEach(function (j) { bump_(verdictCounts, j.verdict || '(none)'); });
 
   const rows = [
-    ['SCORE INSIGHTS', ''],
+    ['JOB SCORE — SCORE INSIGHTS', ''],
     ['Metric', 'Value'],
     ['Average score — all scored jobs', avg_(scoresOf(function () { return true; }))],
     ['Average score — applied', avg_(scoresOf(function (j) {
-      return j.appliedDate || ANALYTICS_APPLIED_STATUSES.indexOf(j.status) !== -1;
+      return j.appliedDate || j.status === 'Applied';
     }))],
-    ['Average score — interviewing or offer', avg_(scoresOf(function (j) {
-      return j.status === 'Interviewing' || j.status === 'Offer';
-    }))],
-    ['Average score — rejected', avg_(scoresOf(function (j) { return j.status === 'Rejected'; }))],
     ['Average score — not yet applied (New/Interested/Applying)', avg_(scoresOf(function (j) {
       return ['New', 'Interested', 'Applying'].indexOf(j.status) !== -1;
     }))],
@@ -251,33 +259,29 @@ function buildScoreSection_(data) {
 function buildTopListsSection_(data) {
   const companyCounts = {};
   const companyApplied = {};
-  const companyInterviewing = {};
   const sourceCounts = {};
 
   data.jobs.forEach(function (j) {
     if (j.company) {
       bump_(companyCounts, j.company);
-      if (j.appliedDate || ANALYTICS_APPLIED_STATUSES.indexOf(j.status) !== -1) {
-        bump_(companyApplied, j.company);
-      }
-      if (j.status === 'Interviewing' || j.status === 'Offer') bump_(companyInterviewing, j.company);
+      if (j.appliedDate || j.status === 'Applied') bump_(companyApplied, j.company);
     }
     if (j.source) bump_(sourceCounts, j.source);
   });
 
   const rows = [
-    ['TOP COMPANIES (by scored postings)', '', '', ''],
-    ['Company', 'Scored', 'Applied', 'Interviewing/Offer'],
+    ['JOB SCORE — TOP COMPANIES (by scored postings)', '', ''],
+    ['Company', 'Scored', 'Applied'],
   ];
   topN_(companyCounts, 10).forEach(function (c) {
-    rows.push([c.key, c.count, companyApplied[c.key] || 0, companyInterviewing[c.key] || 0]);
+    rows.push([c.key, c.count, companyApplied[c.key] || 0]);
   });
 
-  rows.push(['', '', '', '']);
-  rows.push(['TOP SOURCES', '', '', '']);
-  rows.push(['Source', 'Count', '', '']);
+  rows.push(['', '', '']);
+  rows.push(['JOB SCORE — TOP SOURCES', '', '']);
+  rows.push(['Source', 'Count', '']);
   topN_(sourceCounts, 10).forEach(function (s) {
-    rows.push([s.key, s.count, '', '']);
+    rows.push([s.key, s.count, '']);
   });
 
   return rows;
@@ -301,7 +305,7 @@ function buildActivitySection_(data) {
   const uniqueWeeks = weeks.filter(function (w, i) { return weeks.indexOf(w) === i; });
 
   const rows = [
-    ['ACTIVITY — last 8 weeks', '', ''],
+    ['JOB SCORE — ACTIVITY (last 8 weeks)', '', ''],
     ['Week of', 'Scored', 'Applied'],
   ];
   uniqueWeeks.forEach(function (w) {
@@ -330,12 +334,135 @@ function buildTimingSection_(data) {
     : 'n/a';
 
   return [
-    ['TIMING', ''],
+    ['JOB SCORE — TIMING', ''],
     ['Metric', 'Value'],
     ['Average days from scored to applied', avg_(latencies)],
     ['Most recent Applied Date', lastApplied ? formatDate_(lastApplied) : 'n/a'],
     ['Most recent Scored At', lastScored ? formatDate_(lastScored) : 'n/a'],
     ['Days since last application', daysSinceLastApplication],
+  ];
+}
+
+// --- Job Tracker sections --------------------------------------------
+
+function buildTrackerFunnelSection_(data) {
+  const total = data.trackerRows.length;
+
+  const statusCounts = {};
+  JOB_TRACKER_STATUS_OPTIONS.forEach(function (s) { statusCounts[s] = 0; });
+  data.trackerRows.forEach(function (t) {
+    if (statusCounts[t.status] === undefined) statusCounts[t.status] = 0;
+    statusCounts[t.status]++;
+  });
+
+  const rows = [
+    ['JOB TRACKER — POST-APPLICATION FUNNEL', '', ''],
+    ['Stage', 'Count', '% of tracked'],
+    ['Tracked applications (Job Tracker rows)', total, ''],
+    ['', '', ''],
+  ];
+
+  JOB_TRACKER_STATUS_OPTIONS.forEach(function (s) {
+    rows.push(['Status: ' + s, statusCounts[s], pct_(statusCounts[s], total)]);
+  });
+
+  return rows;
+}
+
+function buildTrackerConversionSection_(data) {
+  const total = data.trackerRows.length;
+
+  const count = function (statuses) {
+    return data.trackerRows.filter(function (t) {
+      return statuses.indexOf(t.status) !== -1;
+    }).length;
+  };
+
+  const recruiterPlus = count(['Recruiter', 'Interviewing', 'Offer']);
+  const interviewPlus = count(['Interviewing', 'Offer']);
+  const offers = count(['Offer']);
+  const rejected = count(['Rejected']);
+  const ghosted = count(['Ghosted']);
+
+  return [
+    ['JOB TRACKER — CONVERSION RATES', ''],
+    ['Metric', 'Value'],
+    ['Recruiter contact rate (Recruiter/Interviewing/Offer / tracked)', pct_(recruiterPlus, total)],
+    ['Interview rate (Interviewing/Offer / tracked)', pct_(interviewPlus, total)],
+    ['Offer rate (Offer / tracked)', pct_(offers, total)],
+    ['Offer rate among interviewed (Offer / Interviewing+Offer)', pct_(offers, interviewPlus)],
+    ['Rejection rate (Rejected / tracked)', pct_(rejected, total)],
+    ['Ghost rate (Ghosted / tracked)', pct_(ghosted, total)],
+    ['', ''],
+    ['Note: rates use each row\'s current Status, a snapshot rather than ' +
+     'full history — a row now at Offer also passed through Recruiter and ' +
+     'Interviewing but no longer counts in those rows above.', ''],
+  ];
+}
+
+function buildTrackerScoreSection_(data) {
+  const withScore = data.trackerRows.filter(function (t) { return t.scoreNum !== null; });
+
+  const rows = [
+    ['JOB TRACKER — SCORE BY OUTCOME', ''],
+    ['Status', 'Average Job Score'],
+  ];
+  JOB_TRACKER_STATUS_OPTIONS.forEach(function (s) {
+    const scores = withScore
+      .filter(function (t) { return t.status === s; })
+      .map(function (t) { return t.scoreNum; });
+    rows.push([s, avg_(scores)]);
+  });
+  return rows;
+}
+
+function buildTrackerTopCompaniesSection_(data) {
+  const companyCounts = {};
+  const companyRecruiterPlus = {};
+  const companyInterviewPlus = {};
+
+  data.trackerRows.forEach(function (t) {
+    if (!t.company) return;
+    bump_(companyCounts, t.company);
+    if (['Recruiter', 'Interviewing', 'Offer'].indexOf(t.status) !== -1) {
+      bump_(companyRecruiterPlus, t.company);
+    }
+    if (['Interviewing', 'Offer'].indexOf(t.status) !== -1) bump_(companyInterviewPlus, t.company);
+  });
+
+  const rows = [
+    ['JOB TRACKER — TOP COMPANIES', '', '', ''],
+    ['Company', 'Tracked', 'Recruiter+', 'Interviewing+'],
+  ];
+  topN_(companyCounts, 10).forEach(function (c) {
+    rows.push([c.key, c.count, companyRecruiterPlus[c.key] || 0, companyInterviewPlus[c.key] || 0]);
+  });
+  return rows;
+}
+
+function buildTrackerTimingSection_(data) {
+  const today = new Date();
+  const activeDaysSinceApplied = [];
+  let overdueFollowUps = 0;
+  let mostRecentActivity = null;
+
+  data.trackerRows.forEach(function (t) {
+    const isActive = ANALYTICS_TRACKER_ACTIVE_STATUSES.indexOf(t.status) !== -1;
+    if (isActive && t.appliedDate) {
+      activeDaysSinceApplied.push(Math.round((today - t.appliedDate) / 86400000));
+    }
+    if (isActive && t.nextFollowUp && t.nextFollowUp < today) overdueFollowUps++;
+    if (t.lastActivity && (!mostRecentActivity || t.lastActivity > mostRecentActivity)) {
+      mostRecentActivity = t.lastActivity;
+    }
+  });
+
+  return [
+    ['JOB TRACKER — TIMING', ''],
+    ['Metric', 'Value'],
+    ['Average days since applied (active applications)', avg_(activeDaysSinceApplied)],
+    ['Overdue follow-ups (Next Follow-up has passed, still active)', overdueFollowUps],
+    ['Most recent activity logged', mostRecentActivity ? formatDate_(mostRecentActivity) : 'n/a'],
   ];
 }
 
@@ -367,6 +494,11 @@ function refreshAnalytics() {
     buildTopListsSection_(data),
     buildActivitySection_(data),
     buildTimingSection_(data),
+    buildTrackerFunnelSection_(data),
+    buildTrackerConversionSection_(data),
+    buildTrackerScoreSection_(data),
+    buildTrackerTopCompaniesSection_(data),
+    buildTrackerTimingSection_(data),
   ];
 
   const sectionStartRows = [];
@@ -399,8 +531,9 @@ function refreshAnalytics() {
   sheet.setColumnWidths(2, 3, 140);
   sheet.setFrozenRows(0);
 
-  Logger.log('Analytics refreshed: %s scored job(s).', data.jobs.length);
-  return { jobs: data.jobs.length };
+  Logger.log('Analytics refreshed: %s scored job(s), %s tracked job(s).',
+    data.jobs.length, data.trackerRows.length);
+  return { jobs: data.jobs.length, tracked: data.trackerRows.length };
 }
 
 // --- Menu -----------------------------------------------------------------
@@ -416,7 +549,8 @@ function menuRefreshAnalytics() {
   const result = refreshAnalytics();
   try {
     SpreadsheetApp.getActiveSpreadsheet().toast(
-      'Refreshed — ' + result.jobs + ' scored job(s).', 'Analytics', 6);
+      'Refreshed — ' + result.jobs + ' scored job(s), ' + result.tracked +
+      ' tracked job(s).', 'Analytics', 6);
   } catch (e) {
     Logger.log('UI Not Available in this Context');
   }
