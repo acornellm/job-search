@@ -105,11 +105,13 @@ that when adding columns.
   `ensureManualUrlColumn_()` and `ensureSkipColumn_()` in job-alerts.gs add
   these columns (appended at the end) if missing, so older sheets upgrade
   automatically.
-- **Job Triage** — `Processed At, Role Title, Company, Posting Date, Locations,
-  Salary Range, Top Keywords, Technical Skills, URL, Email Date, Source,
-  Email Link, Status, Notes`. Status is `OK` / `SKIPPED` / `ERROR`.
-  `TRIAGE_URL_COL` and `TRIAGE_STATUS_COL` are positional and must be updated
-  together with any reorder.
+- **Job Triage** — `Processed At, Status, Role Title, Company, Posting Date,
+  Locations, Salary Range, Top Keywords, Technical Skills, URL, Email Date,
+  Source, Email Link, Notes`. Status is `OK` / `SKIPPED` / `ERROR`. Column
+  order is cosmetic only — `readProcessedUrls_()` and `buildTriageRow_()` in
+  job-triage.gs both read/write by header name (via `headerMap_()` from
+  job-scoring.gs), never a fixed index, so the sheet can be reordered by
+  hand without breaking either.
 - **Job Score** — the working tracker. `Status, Score, Verdict, Role Title,
   Company, Locations, Salary Range, Posting Date, Top Keywords,
   Technical Skills, Strengths, Gaps, Score Notes, My Notes, Applied Date,

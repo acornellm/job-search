@@ -26,6 +26,8 @@
  *   triageJobLinks({ limit: 1, dryRun: true });  // log only, no writes
  *
  * Hosts in TRIAGE_EXCLUDED_HOSTS are logged as SKIPPED without an API call.
+ *
+ * Depends on job-scoring.gs for: headerMap_.
  */
 
 // --- Configuration --------------------------------------------------------
@@ -65,13 +67,10 @@ const TRIAGE_MAX_RUNTIME_MS = 5 * 60 * 1000;  // bail out before Apps Script doe
 const TRIAGE_EXCLUDED_HOSTS = ['linkedin.com'];
 
 const TRIAGE_HEADERS = [
-  'Processed At', 'Role Title', 'Company', 'Posting Date', 'Locations',
+  'Processed At', 'Status', 'Role Title', 'Company', 'Posting Date', 'Locations',
   'Salary Range', 'Top Keywords', 'Technical Skills', 'URL', 'Email Date',
-  'Source', 'Email Link', 'Status', 'Notes',
+  'Source', 'Email Link', 'Notes',
 ];
-
-const TRIAGE_URL_COL    = 9;   // column I — used for the processed-URL lookup
-const TRIAGE_STATUS_COL = 13;  // column M
 
 // --- API key handling -----------------------------------------------------
 
@@ -236,15 +235,19 @@ function readJobLinks_(sheetName) {
 
 /**
  * Map of URLs already in the Job Triage sheet -> { row, status }.
- * This is what keeps a link from being sent to the API twice.
+ * This is what keeps a link from being sent to the API twice. Looks up the
+ * URL/Status columns by name via `col` — the sheet's column order can
+ * differ from TRIAGE_HEADERS (e.g. after a hand reorder).
  */
-function readProcessedUrls_(sheet) {
+function readProcessedUrls_(sheet, col) {
   const map = {};
   if (sheet.getLastRow() < 2) return map;
 
+  const cUrl = col['URL'];
+  const cStatus = col['Status'];
   const rows = sheet.getLastRow() - 1;
-  const urls = sheet.getRange(2, TRIAGE_URL_COL, rows, 1).getValues();
-  const stats = sheet.getRange(2, TRIAGE_STATUS_COL, rows, 1).getValues();
+  const urls = sheet.getRange(2, cUrl, rows, 1).getValues();
+  const stats = sheet.getRange(2, cStatus, rows, 1).getValues();
 
   for (let i = 0; i < rows; i++) {
     const u = String(urls[i][0] || '').trim();
@@ -514,7 +517,9 @@ function triageJobLinks(opts) {
   const started = Date.now();
 
   const sheet = getOrCreateSheet_(opts.triageSheet || TRIAGE_SHEET_NAME, TRIAGE_HEADERS);
-  const processed = readProcessedUrls_(sheet);
+  const col = headerMap_(sheet);
+  const width = sheet.getLastColumn();
+  const processed = readProcessedUrls_(sheet, col);
   const links = readJobLinks_(opts.sourceSheet);
 
   // A link is pending if it's absent from Job Triage, or present with an
@@ -542,24 +547,24 @@ function triageJobLinks(opts) {
     if (i > 0) Utilities.sleep(TRIAGE_SLEEP_MS);
 
     Logger.log('[%s/%s] %s', i + 1, batch.length, link.url);
-    const row = extractOneLink_(link, useClaudeFetch);
-    if (row[TRIAGE_HEADERS.indexOf('Status')] === 'ERROR') errors++;
+    const result = extractOneLink_(link, useClaudeFetch, col, width);
+    if (result.status === 'ERROR') errors++;
 
     if (opts.dryRun) {
-      Logger.log('DRY RUN — %s', JSON.stringify(row));
+      Logger.log('DRY RUN — %s', JSON.stringify(result.row));
       continue;
     }
 
     const existing = processed[link.url];
     if (existing) {
-      sheet.getRange(existing.row, 1, 1, TRIAGE_HEADERS.length).setValues([row]);
+      sheet.getRange(existing.row, 1, 1, width).setValues([result.row]);
     } else {
-      newRows.push(row);
+      newRows.push(result.row);
     }
   }
 
   if (newRows.length) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, TRIAGE_HEADERS.length)
+    sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, width)
       .setValues(newRows);
     sheet.autoResizeColumns(1, 4);
   }
@@ -575,8 +580,11 @@ function triageJobLinks(opts) {
   return summary;
 }
 
-/** Fetch, extract, and flatten one link into a Job Triage row. */
-function extractOneLink_(link, useClaudeFetch) {
+/**
+ * Fetch, extract, and flatten one link into a Job Triage row.
+ * @return {Object} { row, status }
+ */
+function extractOneLink_(link, useClaudeFetch, col, width) {
   const now = new Date();
   let status = 'OK';
   let note = '';
@@ -585,7 +593,10 @@ function extractOneLink_(link, useClaudeFetch) {
   // Excluded hosts never reach the API — no fetch, no tokens, no error row.
   if (isExcludedHost_(link.url)) {
     Logger.log('  excluded host, skipping without an API call');
-    return buildTriageRow_(now, link, {}, 'SKIPPED', 'excluded host');
+    return {
+      row: buildTriageRow_(now, link, {}, 'SKIPPED', 'excluded host', col, width),
+      status: 'SKIPPED',
+    };
   }
 
   try {
@@ -623,29 +634,44 @@ function extractOneLink_(link, useClaudeFetch) {
     Logger.log('  failed: %s', note);
   }
 
-  return buildTriageRow_(now, link, data, status, note);
+  return {
+    row: buildTriageRow_(now, link, data, status, note, col, width),
+    status: status,
+  };
 }
 
-/** Assemble one row in TRIAGE_HEADERS order. */
-function buildTriageRow_(now, link, data, status, note) {
+/**
+ * Assemble one row, placed by column name via `col` rather than a fixed
+ * index — the sheet's column order can differ from TRIAGE_HEADERS (e.g.
+ * after a hand reorder), so this must not assume position. `width` is the
+ * row's length, i.e. the sheet's current column count.
+ */
+function buildTriageRow_(now, link, data, status, note, col, width) {
   data = data || {};
   if (link.manual) note = note ? 'manual URL — ' + note : 'manual URL';
-  return [
-    now,                                   // Processed At
-    scalar_(data.role_title),              // Role Title
-    scalar_(data.company),                 // Company
-    scalar_(data.posting_date),            // Posting Date
-    list_(data.locations),                 // Locations
-    scalar_(data.salary_range),            // Salary Range
-    list_(data.keywords),                  // Top Keywords
-    list_(data.technical_skills),          // Technical Skills
-    link.url,                              // URL
-    formatDate_(link.date),                // Email Date   (from the link data)
-    link.host || hostFromUrl_(link.url),   // Source       (from the link data)
-    link.permalink || '',                  // Email Link
-    status,                                // Status
-    note,                                  // Notes
-  ];
+
+  const byName = {
+    'Processed At': now,
+    'Status': status,
+    'Role Title': scalar_(data.role_title),
+    'Company': scalar_(data.company),
+    'Posting Date': scalar_(data.posting_date),
+    'Locations': list_(data.locations),
+    'Salary Range': scalar_(data.salary_range),
+    'Top Keywords': list_(data.keywords),
+    'Technical Skills': list_(data.technical_skills),
+    'URL': link.url,
+    'Email Date': formatDate_(link.date),
+    'Source': link.host || hostFromUrl_(link.url),
+    'Email Link': link.permalink || '',
+    'Notes': note,
+  };
+
+  const row = new Array(width).fill('');
+  Object.keys(byName).forEach(function (name) {
+    if (col[name]) row[col[name] - 1] = byName[name];
+  });
+  return row;
 }
 
 /** Arrays -> comma-separated string, with N/A for empties. */
