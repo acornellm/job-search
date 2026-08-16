@@ -17,7 +17,8 @@
 
 // The Gmail label to scan. Change this once and every function below follows.
 // Nested labels use the full path, e.g. 'Jobs/JobAlerts'.
-const JOB_ALERT_LABEL = 'Jobs/JobAlerts';
+const JOB_ALERT_LABEL  = 'Jobs/JobAlerts';
+const JOB_LINKS_SHEET_NAME = 'Job Links';
 
 // Manual-entry column on Job Links. Paste a job posting URL here (any host —
 // the company's own careers page, a resolved LinkedIn posting, whatever) and
@@ -220,6 +221,13 @@ function demo() {
   const rows = findJobLinks(JOB_ALERT_LABEL, { newerThan: '4h', resolveRedirects: true });
   rows.forEach(function (r) { Logger.log(r.date + '  ' + r.host + '  ' + r.url); });
   Logger.log('Found %s links', rows.length);
+}
+
+/**
+ * Used to call from Trigger
+ */
+function insertJobLinks() {
+  exportToSheet(JOB_LINKS_SHEET_NAME, JOB_ALERT_LABEL, { newerThan: '6h', resolveRedirects: true })
 }
 
 /**

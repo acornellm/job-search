@@ -229,7 +229,7 @@ function buildScoreSection_(data) {
       return ['New', 'Interested', 'Applying'].indexOf(j.status) !== -1;
     }))],
     ['', ''],
-    ['Score distribution', 'Count'],
+    ['Score distribution', 'Count'],  
   ];
 
   buckets.forEach(function (b) {

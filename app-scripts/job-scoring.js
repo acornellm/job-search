@@ -56,8 +56,7 @@ const RESUME_DOC_ID_PROPERTY  = 'RESUME_DOC_ID';
 
 // Status column is a dropdown you drive by hand.
 const STATUS_OPTIONS = [
-  'New', 'Interested', 'Applying', 'Applied', 'Interviewing',
-  'Offer', 'Rejected', 'Skip',
+  'New', 'Interested', 'Applying', 'Applied', 'Skip',
 ];
 const STATUS_DEFAULT = 'New';
 
