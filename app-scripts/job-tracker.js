@@ -198,8 +198,9 @@ function syncAppliedJobs() {
     const rowNum = sheet.getLastRow();
     if (col['Days Since Applied'] && col['Applied Date']) {
       const cell = trackerColLetter_(col['Applied Date']) + rowNum;
+      const statusCell = trackerColLetter_(col['Status']) + rowNum;
       sheet.getRange(rowNum, col['Days Since Applied'])
-        .setFormula('=IF(' + cell + '="","",TODAY()-' + cell + ')');
+        .setFormula('=IF(' + statusCell + '="Applied", IF(' + cell + '="","",TODAY()-' + cell + '), "-")');
     }
     existing[job.url] = rowNum;
     added++;
