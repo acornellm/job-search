@@ -61,9 +61,12 @@ const STATUS_OPTIONS = [
 const STATUS_DEFAULT = 'New';
 
 // Sheet layout. Status and Score lead so the sheet is scannable at a glance.
+// Top Keywords / Technical Skills are copied over from Job Triage at scoring
+// time so the posting's substance is visible here without switching sheets.
 const SCORE_SHEET_HEADERS = [
   'Status', 'Score', 'Verdict', 'Role Title', 'Company', 'Locations',
-  'Salary Range', 'Posting Date', 'Strengths', 'Gaps', 'Score Notes',
+  'Salary Range', 'Posting Date', 'Top Keywords', 'Technical Skills',
+  'Strengths', 'Gaps', 'Score Notes',
   'My Notes', 'Applied Date', 'Source', 'URL', 'Email Link', 'Scored At',
 ];
 
@@ -401,8 +404,30 @@ function getOrCreateScoreSheet_() {
     sheet.setFrozenRows(1);
     sheet.getRange(1, 1, 1, SCORE_SHEET_HEADERS.length).setFontWeight('bold');
     applyStatusValidation_(sheet);
+  } else {
+    ensureScoreSheetColumns_(sheet);
   }
   return sheet;
+}
+
+/**
+ * Add any SCORE_SHEET_HEADERS columns missing from an existing sheet — e.g.
+ * "Top Keywords" / "Technical Skills" added after the sheet already had
+ * rows. Appended at the end, same idempotent pattern as
+ * ensureTailoringColumns_() in job-tailoring.gs: never reorders or touches
+ * existing columns, so it's safe to call on every run.
+ */
+function ensureScoreSheetColumns_(sheet) {
+  const width = sheet.getLastColumn();
+  const header = width > 0
+    ? sheet.getRange(1, 1, 1, width).getValues()[0].map(function (h) { return String(h).trim(); })
+    : [];
+  const missing = SCORE_SHEET_HEADERS.filter(function (h) { return header.indexOf(h) === -1; });
+  if (!missing.length) return;
+
+  sheet.getRange(1, width + 1, 1, missing.length).setValues([missing]);
+  sheet.getRange(1, width + 1, 1, missing.length).setFontWeight('bold');
+  Logger.log('Added column(s) to "%s": %s', SCORE_SHEET_NAME, missing.join(', '));
 }
 
 /** Dropdown on the Status column. Invalid values are allowed but flagged. */
@@ -492,6 +517,7 @@ function scoreTriagedJobs(opts) {
 
   const sheet = getOrCreateScoreSheet_();
   const col = headerMap_(sheet);
+  const width = sheet.getLastColumn();
   const already = readScoredUrls_(sheet);
   const jobs = readTriagedJobs_();
 
@@ -544,12 +570,12 @@ function scoreTriagedJobs(opts) {
       updateScoreRow_(sheet, col, existingRow, job, result);
       updated++;
     } else {
-      newRows.push(buildScoreRow_(job, result));
+      newRows.push(buildScoreRow_(job, result, col, width));
     }
   }
 
   if (newRows.length) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, SCORE_SHEET_HEADERS.length)
+    sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, width)
       .setValues(newRows);
   }
 
@@ -569,8 +595,14 @@ function scoreTriagedJobs(opts) {
   return summary;
 }
 
-/** Assemble a full new row in SCORE_SHEET_HEADERS order. */
-function buildScoreRow_(job, result) {
+/**
+ * Assemble a full new row, placed by column name via `col` rather than a
+ * fixed index — a migrated sheet can have columns in a different order
+ * than SCORE_SHEET_HEADERS (new ones land appended at the end), so this
+ * must not assume position. `width` is the row's length, i.e. the sheet's
+ * current column count.
+ */
+function buildScoreRow_(job, result, col, width) {
   const byName = {
     'Status': STATUS_DEFAULT,
     'Score': result.score,
@@ -580,6 +612,8 @@ function buildScoreRow_(job, result) {
     'Locations': job.locations,
     'Salary Range': job.salary,
     'Posting Date': job.posted,
+    'Top Keywords': job.keywords,
+    'Technical Skills': job.skills,
     'Strengths': result.strengths,
     'Gaps': result.gaps,
     'Score Notes': result.notes,
@@ -590,9 +624,12 @@ function buildScoreRow_(job, result) {
     'Email Link': job.permalink,
     'Scored At': new Date(),
   };
-  return SCORE_SHEET_HEADERS.map(function (h) {
-    return byName[h] === undefined ? '' : byName[h];
+
+  const row = new Array(width).fill('');
+  Object.keys(byName).forEach(function (name) {
+    if (col[name]) row[col[name] - 1] = byName[name];
   });
+  return row;
 }
 
 /**
@@ -608,6 +645,8 @@ function updateScoreRow_(sheet, col, rowNum, job, result) {
     'Locations': job.locations,
     'Salary Range': job.salary,
     'Posting Date': job.posted,
+    'Top Keywords': job.keywords,
+    'Technical Skills': job.skills,
     'Strengths': result.strengths,
     'Gaps': result.gaps,
     'Score Notes': result.notes,
@@ -786,11 +825,12 @@ function scoreOneUrl(url) {
   const result = normalizeScore_(parseClaudeJson_(res.text));
   const sheet = getOrCreateScoreSheet_();
   const col = headerMap_(sheet);
+  const width = sheet.getLastColumn();
   const existing = readScoredUrls_(sheet)[url];
 
   if (existing) updateScoreRow_(sheet, col, existing, job, result);
-  else sheet.getRange(sheet.getLastRow() + 1, 1, 1, SCORE_SHEET_HEADERS.length)
-        .setValues([buildScoreRow_(job, result)]);
+  else sheet.getRange(sheet.getLastRow() + 1, 1, 1, width)
+        .setValues([buildScoreRow_(job, result, col, width)]);
 
   sortScoreSheet();
   return result;
