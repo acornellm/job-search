@@ -73,8 +73,8 @@ const SCORE_SHEET_HEADERS = [
 // Yours. Written once when the row is created, never touched again.
 const USER_OWNED_COLUMNS = ['Status', 'My Notes', 'Applied Date'];
 
-const SCORING_MODEL          = 'claude-sonnet-5';
-const SCORING_MAX_TOKENS     = 1500;
+const SCORING_MODEL          = 'claude-fable-5';
+const SCORING_MAX_TOKENS     = 1700;
 const SCORING_DEFAULT_LIMIT  = 20;
 const SCORING_SLEEP_MS       = 800;   // keeps calls inside the 5-min cache TTL
 const SCORING_MAX_RUNTIME_MS = 5 * 60 * 1000;
