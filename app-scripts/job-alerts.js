@@ -274,7 +274,7 @@ function ensureSkipColumn_(sheet) {
  */
 function exportToSheet(sheetName, labelName, opts) {
   sheetName = sheetName || 'Job Links';
-  const HEADERS = ['Date', 'Company/Host', 'URL', 'Subject', 'From', 'Email Link'];
+  const HEADERS = ['Date', 'Skip', 'Company/Host', 'URL', 'Manual URL', 'Subject', 'From', 'Email Link'];
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(sheetName);
@@ -289,24 +289,45 @@ function exportToSheet(sheetName, labelName, opts) {
   ensureManualUrlColumn_(sheet);
   ensureSkipColumn_(sheet);
 
-  // Column C holds the URL — build a set of what's already there.
+  // Column order can vary per sheet (older sheets, or one hand-reordered to
+  // taste), so everything below goes by header name, never a fixed index.
+  const width = sheet.getLastColumn();
+  const header = sheet.getRange(1, 1, 1, width).getValues()[0]
+    .map(function (h) { return String(h).trim(); });
+  const col = {};
+  header.forEach(function (h, i) { if (h) col[h] = i + 1; });
+
+  const cUrl = col['URL'];
+  if (!cUrl) throw new Error('No "URL" column found on "' + sheetName + '".');
+
   const existing = {};
   if (sheet.getLastRow() > 1) {
-    sheet.getRange(2, 3, sheet.getLastRow() - 1, 1).getValues()
+    sheet.getRange(2, cUrl, sheet.getLastRow() - 1, 1).getValues()
       .forEach(function (r) { if (r[0]) existing[String(r[0]).trim()] = true; });
   }
 
-  const rows = findJobLinks(labelName || JOB_ALERT_LABEL, opts || { newerThan: '1d', resolveRedirects: true })
-    .filter(function (r) { return !existing[r.url]; })
-    .map(function (r) { return [r.date, r.host, r.url, r.subject, r.from, r.permalink]; });
+  const found = findJobLinks(labelName || JOB_ALERT_LABEL, opts || { newerThan: '1d', resolveRedirects: true })
+    .filter(function (r) { return !existing[r.url]; });
 
-  if (!rows.length) {
+  if (!found.length) {
     Logger.log('No new links for "%s".', sheetName);
     return 0;
   }
 
-  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, HEADERS.length).setValues(rows);
-  sheet.autoResizeColumns(1, HEADERS.length);
+  const rows = found.map(function (r) {
+    const byName = {
+      'Date': r.date, 'Company/Host': r.host, 'URL': r.url,
+      'Subject': r.subject, 'From': r.from, 'Email Link': r.permalink,
+    };
+    const row = new Array(width).fill('');
+    Object.keys(byName).forEach(function (name) {
+      if (col[name]) row[col[name] - 1] = byName[name];
+    });
+    return row;
+  });
+
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, width).setValues(rows);
+  sheet.autoResizeColumns(1, width);
   Logger.log('Added %s new link(s) to "%s".', rows.length, sheetName);
   return rows.length;
 }

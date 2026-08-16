@@ -92,15 +92,19 @@ Sheet and column names are the integration contract between files. Code reads
 columns **by header name** via `headerMap_()`, never by fixed index — preserve
 that when adding columns.
 
-- **Job Links** — `Date, Company/Host, URL, Subject, From, Email Link, Manual URL, Skip`.
-  `Manual URL` is user-entry only — paste a resolved posting URL there (any
-  host) and `readJobLinks_()` in job-triage.gs uses it instead of the URL
-  scraped from the email, bypassing `TRIAGE_EXCLUDED_HOSTS` for that row.
-  `Skip` is user-entry only — type `SKIP` to drop a row from triage entirely
-  (no fetch, no API call, no Job Triage row); checked before `Manual URL`, so
-  `SKIP` wins if both are set. `ensureManualUrlColumn_()` and
-  `ensureSkipColumn_()` in job-alerts.gs add these columns if missing, so
-  older sheets upgrade automatically.
+- **Job Links** — `Date, Skip, Company/Host, URL, Manual URL, Subject, From,
+  Email Link`. Column order is cosmetic only — `exportToSheet()` in
+  job-alerts.gs and `readJobLinks_()` in job-triage.gs both write/read by
+  header name, never a fixed index, so the sheet can be reordered by hand
+  without breaking either. `Manual URL` is user-entry only — paste a
+  resolved posting URL there (any host) and `readJobLinks_()` uses it
+  instead of the URL scraped from the email, bypassing
+  `TRIAGE_EXCLUDED_HOSTS` for that row. `Skip` is user-entry only — type
+  `SKIP` to drop a row from triage entirely (no fetch, no API call, no Job
+  Triage row); checked before `Manual URL`, so `SKIP` wins if both are set.
+  `ensureManualUrlColumn_()` and `ensureSkipColumn_()` in job-alerts.gs add
+  these columns (appended at the end) if missing, so older sheets upgrade
+  automatically.
 - **Job Triage** — `Processed At, Role Title, Company, Posting Date, Locations,
   Salary Range, Top Keywords, Technical Skills, URL, Email Date, Source,
   Email Link, Status, Notes`. Status is `OK` / `SKIPPED` / `ERROR`.
