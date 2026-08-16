@@ -107,11 +107,15 @@ that when adding columns.
   `TRIAGE_URL_COL` and `TRIAGE_STATUS_COL` are positional and must be updated
   together with any reorder.
 - **Job Score** — the working tracker. `Status, Score, Verdict, Role Title,
-  Company, Locations, Salary Range, Posting Date, Strengths, Gaps, Score Notes,
-  My Notes, Applied Date, Source, URL, Email Link, Scored At`, plus
-  `Tailoring Doc, Prepped At` added by job-tailoring.gs. Re-sorted highest
-  score first after every write — `scoreTriagedJobs()` and `scoreOneUrl()`
-  both call `sortScoreSheet()` once they're done writing.
+  Company, Locations, Salary Range, Posting Date, Top Keywords,
+  Technical Skills, Strengths, Gaps, Score Notes, My Notes, Applied Date,
+  Source, URL, Email Link, Scored At`, plus `Tailoring Doc, Prepped At`
+  added by job-tailoring.gs. `Top Keywords` / `Technical Skills` are copied
+  from Job Triage at scoring time (already fetched for the scoring prompt,
+  just not previously persisted) so a job's substance is visible here
+  without switching sheets. Re-sorted highest score first after every
+  write — `scoreTriagedJobs()` and `scoreOneUrl()` both call
+  `sortScoreSheet()` once they're done writing.
 - **Scoring Rubric** — `Type, Criterion, Weight, Notes`. Type is Must-have /
   Nice-to-have / Dealbreaker / **Equivalence**.
 - **Calibration** — `Role Title, Company, Key Details, My Score, Reasoning`.
