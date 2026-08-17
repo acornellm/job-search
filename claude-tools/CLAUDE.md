@@ -20,11 +20,8 @@ claude-tools/
 │   └── writing/                            # professional documents
 │       └── skills/
 │           └── resume-cover-letter/
-├── .claude-plugin/                         # Marketplace + plugin config
-│   └── plugin.json
 ├── CLAUDE.md                               # This file
-├── README.md                               # Public-facing overview
-└── LICENSE                                 # MIT
+└── README.md                               # Public-facing overview
 ```
 
 ## Plugin Anatomy (Anthropic Spec)
@@ -44,41 +41,6 @@ plugin-name/
         └── assets/        # Files used in output (templates, images)
 ```
 
-## Adding a New Plugin
-
-1. Create the plugin directory:
-   ```bash
-   mkdir -p plugins/my-plugin/{.claude-plugin,skills}
-   ```
-
-2. Create `.claude-plugin/plugin.json`:
-   ```json
-   {
-     "name": "my-plugin",
-     "description": "What this plugin does.",
-     "author": { "name": "Jeremy Dawes / Jezweb", "email": "jeremy@jezweb.net" }
-   }
-   ```
-
-3. Add skills inside `plugins/my-plugin/skills/` (each with SKILL.md)
-
-4. Add an entry to `.claude-plugin/marketplace.json`:
-   ```json
-   { "name": "my-plugin", "description": "...", "source": "./plugins/my-plugin", "category": "development" }
-   ```
-
-5. Update the directory tree in this file and the table in README.md
-
-**Categories**: `development`, `design`, `productivity`, `testing`, `security`, `database`, `monitoring`, `deployment`
-
-## Creating a Skill
-
-See [`SKILL_SHAPE.md`](SKILL_SHAPE.md) for the canonical authoring guide — frontmatter, sections in order, what earns its place, what to leave out, trimming pass for existing skills.
-
-Quick start: use [Anthropic's official skill-creator](https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md) or ask Claude: "Create a new skill for [use case]"
-
-Key principle: **every skill must produce something.** If it's just reference material Claude already knows, it doesn't earn a place here.
-
 ### Skill Design: Inline Everything Critical
 
 **If the agent skipping it would derail the workflow, it goes in SKILL.md.** Reference files are for genuinely optional material — variant-specific docs, supplementary examples, historical context. Anything on the critical path must be inline.
@@ -88,7 +50,6 @@ This was learned the hard way: an agent was told "see references/stitch-direct.m
 | Content type | Where it goes | Example |
 |-------------|--------------|---------|
 | Workflow steps, commands, scripts | **SKILL.md body (inline)** | curl commands, Python scripts, mapping tables |
-| Executable helper scripts | `scripts/` | Agent runs them without reading (fine) |
 | Variant/optional docs | `references/` | Platform-specific variants (AWS vs GCP) |
 | Templates copied into user projects | `assets/` | React boilerplate, config files |
 
@@ -101,23 +62,6 @@ This was learned the hard way: an agent was told "see references/stitch-direct.m
 - `name`: kebab-case, lowercase letters/digits/hyphens, max 64 characters
 - `description`: max 1024 characters, no angle brackets. Include trigger phrases.
 - Optional: `license`, `compatibility`, `allowed-tools`, `metadata`
-
-## Installing Plugins
-
-```bash
-# Add marketplace (one-time)
-/plugin marketplace add jezweb/claude-skills
-
-# Install individual plugins
-/plugin install cloudflare@jezweb-skills
-/plugin install dev-tools@jezweb-skills
-/plugin install frontend@jezweb-skills
-
-# Local dev (loads a single plugin without install)
-claude --plugin-dir ./plugins/cloudflare
-```
-
-After installing, restart Claude Code to load new plugins.
 
 ## Quality Bar
 
@@ -137,5 +81,4 @@ When a skill's instructions are correct at one point but a library update change
 
 Only for version-specific issues. Small typos or obvious mistakes should just be fixed in SKILL.md directly.
 
-## Git History
 
