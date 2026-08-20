@@ -82,12 +82,15 @@ Applicant Tracking Systems parse resumes before humans see them. Follow these ru
 - Spell out acronyms on first use, then abbreviate: "Search Engine Optimisation (SEO)"
 - Resume section headers are capitalized with a horizontal border below
 - Cover letter has horizontal line below contact info, resume does not - only section headers
+- Name and contact info is center aligned
 - Dates: write "June 2021 – July 2022" not "06/21–07/22"; align to right with margin
 - Clickable links only — no raw URLs; make links blend in (same color as text, not underlined)
 - No bolding of random mid-sentence phrases — bold only titles, companies, and dates
 - No "etc." or slang — use complete, professional language
 - Use Stop-Slop skill for more human sounding writing
-- Section headers, horizontal lines and name should use the color #00786C;  Text in professional experience, skills, areas of expertise should use the color #424242;
+- Section headers, horizontal lines and name should use the color #00786C
+- Text only in professional experience acheivements/bullets, technical skills, areas of expertise are in the color #424242
+- Summary, contact info, company names, titles, locations and dates in work experience use black as the text color
 
 ### What to Omit
 
@@ -196,8 +199,7 @@ Clear call to action. "I'd welcome the chance to discuss how my experience in X 
 - Under one page, always
 - Same header/font as the resume for visual consistency
 - Address to a named person where possible (check LinkedIn, company website). "Dear Hiring Manager" as a last resort
-- AU/NZ: sign off with "Kind regards" (proposals/applications) or "Cheers" (if tone is casual)
-- US/UK: "Sincerely" or "Kind regards"
+- US/UK: "Sincerely" or "Regards"
 
 ### Tone Matching
 
